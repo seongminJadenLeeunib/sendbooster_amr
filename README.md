@@ -1,4 +1,4 @@
-###sendbooster_amr_bringup
+sendbooster_amr_bringup
 개요
 sendbooster_amr_bringup 프로젝트는 ROS 2 Humble 환경에서 운영되는 자율 이동 로봇(AMR)을 위한 ROS 패키지입니다. 이 패키지는 로봇의 엔코더, IMU, 오도메트리 데이터를 처리하여 로봇의 위치와 자세를 추정하고, 이를 /odom 토픽을 통해 다른 ROS 2 노드와 공유합니다. 이 패키지 내에는 각각 모터 드라이버(엔코더), IMU, 오도메트리 기능을 수행하는 세 개의 노드가 포함되어 있습니다.
 
@@ -25,7 +25,7 @@ ros2 run rviz2 rviz2
 Rviz에서 odom 프레임을 고정하여 오도메트리 데이터를 시각화할 수 있습니다. TF 트리와 Odometry 메시지를 확인해 로봇의 위치와 자세를 실시간으로 모니터링할 수 있습니다.
 
 파일 트리
-bash
+plaintext
 코드 복사
 sendbooster_amr_bringup/
 ├── launch/
