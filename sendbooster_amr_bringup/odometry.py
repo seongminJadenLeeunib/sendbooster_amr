@@ -14,73 +14,70 @@ class OdometryNode(Node):
         # Odometry Publisher
         self.odom_pub = self.create_publisher(Odometry, 'odom', 50)
         
+        # IMU Subscriber
+        self.imu_sub = self.create_subscription(Float32, 'imu_data', self.imu_callback, 10)
+        
         # TF broadcaster
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
         
-        # Encoder and IMU data initialization
-        self.encoder_ticks_left = 0
-        self.encoder_ticks_right = 0
+        # Wheel parameters
         self.wheel_radius = 0.1  # Wheel radius in meters
         self.wheel_base = 0.5     # Distance between the wheels in meters
-        
+
         # Odometry variables
         self.x = 0.0  # Robot's x position
         self.y = 0.0  # Robot's y position
         self.theta = 0.0  # Robot's orientation (yaw)
 
-        # Subscribe to encoder and IMU topics
-        self.create_subscription(Float32, 'encoder_left', self.encoder_callback_left, 10)
-        self.create_subscription(Float32, 'encoder_right', self.encoder_callback_right, 10)
-        self.create_subscription(Float32, 'imu_data', self.imu_callback, 10)
-        
         # Timer to update odometry
         self.timer = self.create_timer(0.2, self.update_odometry)  # Update every 0.2 seconds (5 Hz)
 
-    def encoder_callback_left(self, msg):
-        """Callback for left encoder data."""
-        self.encoder_ticks_left = msg.data
-
-    def encoder_callback_right(self, msg):
-        """Callback for right encoder data."""
-        self.encoder_ticks_right = msg.data
+        # Constant velocities for movement (instead of random)
+        self.linear_velocity = 0.1  # Linear velocity in meters per second
+        self.angular_velocity = 0.1  # Angular velocity in radians per second
 
     def imu_callback(self, msg):
-        """Callback for IMU yaw data."""
-        self.theta = math.radians(msg.data)  # Yaw in radians
+        """IMU 데이터에서 yaw 값을 받아옴 (도에서 라디안으로 변환)"""
+        degrees_yaw = msg.data  # IMU로 받은 yaw 값이 도 단위라고 가정
+        self.theta = degrees_yaw * (math.pi / 180.0)  # 도를 라디안으로 변환
 
     def update_odometry(self):
-        # Calculate distance and delta_theta
-        left_distance = self.encoder_ticks_left * self.wheel_radius
-        right_distance = self.encoder_ticks_right * self.wheel_radius
-        distance = (left_distance + right_distance) / 2.0
+        # 선속도와 각속도를 일정하게 설정
+        left_linear_velocity = self.linear_velocity
+        right_linear_velocity = self.linear_velocity
 
-        # Update x and y based on distance and theta
-        self.x += distance * math.cos(self.theta)
-        self.y += distance * math.sin(self.theta)
+        # 평균 선속도 계산
+        linear_velocity = (left_linear_velocity + right_linear_velocity) / 2.0
+        angular_velocity = (right_linear_velocity - left_linear_velocity) / self.wheel_base
 
-        # Publish transform
+        # 현재 위치와 각도 업데이트 (0.2초 동안의 이동 거리)
+        self.x += linear_velocity * math.cos(self.theta) * 0.2
+        self.y += linear_velocity * math.sin(self.theta) * 0.2
+        self.theta += angular_velocity * 0.2  # 0.2초 동안의 각도 변화
+
+        # 트랜스폼 메시지 생성
         current_time = self.get_clock().now()
         transform = geometry_msgs.msg.TransformStamped()
-        transform.header.stamp = current_time.to_msg()
+        transform.header.stamp = current_time.to_msg()  # 항상 새로운 시간으로 갱신
         transform.header.frame_id = "odom"
         transform.child_frame_id = "base_link"
         transform.transform.translation.x = self.x
         transform.transform.translation.y = self.y
         transform.transform.translation.z = 0.0
 
-        # Convert theta to Quaternion
+        # 로봇의 오리엔테이션을 Quaternion으로 변환
         quat = self.quaternion_from_euler(0, 0, self.theta)
         transform.transform.rotation.x = quat[0]
         transform.transform.rotation.y = quat[1]
         transform.transform.rotation.z = quat[2]
         transform.transform.rotation.w = quat[3]
 
-        # Publish transform
+        # 트랜스폼 브로드캐스터로 송출
         self.tf_broadcaster.sendTransform(transform)
 
-        # Publish odometry message
+        # 오도메트리 메시지 송출
         odom_msg = Odometry()
-        odom_msg.header.stamp = current_time.to_msg()
+        odom_msg.header.stamp = current_time.to_msg()  # 항상 새로운 시간으로 갱신
         odom_msg.header.frame_id = "odom"
         odom_msg.child_frame_id = "base_link"
         odom_msg.pose.pose.position.x = self.x
