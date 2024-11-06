@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
+from std_msgs.msg import Float32
 import serial
 
 # 시리얼 포트 설정
@@ -24,12 +25,17 @@ def send_packet(rpm1, rpm2):
 class MotorControlNode(Node):
     def __init__(self):
         super().__init__('motor_control_node')
+        
+        # cmd_vel 토픽 구독
         self.subscription = self.create_subscription(
             Twist,
             '/cmd_vel',
             self.listener_callback,
             10
         )
+        
+        # motor_rpm 토픽에 발행하는 퍼블리셔 생성
+        self.motor_rpm_pub = self.create_publisher(Float32, 'motor_rpm', 10)
 
     def listener_callback(self, msg):
         linear_x = msg.linear.x
@@ -37,10 +43,20 @@ class MotorControlNode(Node):
         wheel_base = 0.5
         wheel_radius = 0.1
 
+        # 왼쪽, 오른쪽 모터의 RPM 계산
         rpm1 = int(((linear_x - (angular_z * wheel_base / 2)) / (2 * 3.1416 * wheel_radius)) * -60)
         rpm2 = int(((linear_x + (angular_z * wheel_base / 2)) / (2 * 3.1416 * wheel_radius)) * 60)
 
+        # RPM 값 시리얼 포트로 전송
         send_packet(rpm1, rpm2)
+
+        # motor_rpm 토픽에 RPM 값 발행
+        avg_rpm = (rpm1 + rpm2) / 2.0
+        rpm_msg = Float32()
+        rpm_msg.data = avg_rpm
+        self.motor_rpm_pub.publish(rpm_msg)
+
+        self.get_logger().info(f"Published motor RPM: {avg_rpm:.2f}")
 
 def main(args=None):
     rclpy.init(args=args)
