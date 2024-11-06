@@ -178,3 +178,14 @@ def main(args=None):
 주의 사항
 TF 프레임 설정: odometry.py에서 odom 프레임과 base_link 프레임을 설정하여 TF 트리를 구성해야 RViz에서 정상적으로 시각화됩니다.
 IMU 데이터 및 엔코더 데이터 정확도: 현재 코드는 시뮬레이션용으로 임의의 데이터를 사용하고 있습니다. 실제 센서 데이터를 사용하는 경우 데이터 주기와 필터링 방법을 추가로 고려해야 합니다.
+
+###USB포트 설정
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{devpath}=="1.4.1", SYMLINK+="sendbooster_motor_driver"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", ATTRS{devpath}=="1.4.2", SYMLINK+="sendbooster_bat_state"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", ATTRS{devpath}=="1.4.4", SYMLINK+="sendbooster_imu"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{devpath}=="1.1.4", SYMLINK+="sendbooster_front_lidar"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{devpath}=="1.1.1", SYMLINK+="sendbooster_center_lidar"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{devpath}=="1.1.2", SYMLINK+="sendbooster_mini_lidar_1"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{devpath}=="1.1.3.4", SYMLINK+="sendbooster_mini_lidar_2"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{devpath}=="1.1.3.1", SYMLINK+="sendbooster_mini_lidar_3"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{devpath}=="1.1.3.2", SYMLINK+="sendbooster_mini_lidar_4"
