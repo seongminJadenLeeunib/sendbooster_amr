@@ -1,44 +1,52 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32
-import time
+from geometry_msgs.msg import Twist
+import serial
 
-class EncoderNode(Node):
+# 시리얼 포트 설정
+ser = serial.Serial('/dev/ttyUSB8', baudrate=19200, timeout=1)
+
+def calculate_checksum(packet):
+    checksum_value = sum(packet) & 0xFF
+    checksum = (~checksum_value + 1) & 0xFF
+    return checksum
+
+def send_packet(rpm1, rpm2):
+    rpm1_low = rpm1 & 0xFF
+    rpm1_high = (rpm1 >> 8) & 0xFF
+    rpm2_low = rpm2 & 0xFF
+    rpm2_high = (rpm2 >> 8) & 0xFF
+    packet = [183, 184, 1, 207, 7, 1, rpm1_low, rpm1_high, 1, rpm2_low, rpm2_high, 0]
+    checksum = calculate_checksum(packet)
+    packet.append(checksum)
+    ser.write(bytearray(packet))
+
+class MotorControlNode(Node):
     def __init__(self):
-        super().__init__('encoder')
-        
-        # Publishers for left and right encoder values
-        self.encoder_left_pub = self.create_publisher(Float32, 'encoder_left', 10)
-        self.encoder_right_pub = self.create_publisher(Float32, 'encoder_right', 10)
-        
-        # Initialize encoder values
-        self.encoder_left_value = 0.0
-        self.encoder_right_value = 0.0
-        
-        # Timer to update encoder values
-        self.timer = self.create_timer(0.2, self.update_encoder_values)  # Update every 0.2 seconds
+        super().__init__('motor_control_node')
+        self.subscription = self.create_subscription(
+            Twist,
+            '/cmd_vel',
+            self.listener_callback,
+            10
+        )
 
-    def update_encoder_values(self):
-        # Increment encoder values by 10 each update
-        self.encoder_left_value += 0.01
-        self.encoder_right_value += 0.01
+    def listener_callback(self, msg):
+        linear_x = msg.linear.x
+        angular_z = msg.angular.z
+        wheel_base = 0.5
+        wheel_radius = 0.1
 
-        # Publish encoder values
-        left_msg = Float32()
-        right_msg = Float32()
-        left_msg.data = self.encoder_left_value
-        right_msg.data = self.encoder_right_value
-        
-        self.encoder_left_pub.publish(left_msg)
-        self.encoder_right_pub.publish(right_msg)
-        
-        self.get_logger().info(f"Published Left Encoder: {self.encoder_left_value}, Right Encoder: {self.encoder_right_value}")
+        rpm1 = int(((linear_x - (angular_z * wheel_base / 2)) / (2 * 3.1416 * wheel_radius)) * -60)
+        rpm2 = int(((linear_x + (angular_z * wheel_base / 2)) / (2 * 3.1416 * wheel_radius)) * 60)
+
+        send_packet(rpm1, rpm2)
 
 def main(args=None):
     rclpy.init(args=args)
-    node = EncoderNode()
-    rclpy.spin(node)
-    node.destroy_node()
+    motor_control_node = MotorControlNode()
+    rclpy.spin(motor_control_node)
+    motor_control_node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':
